@@ -1,0 +1,125 @@
+#!/bin/bash
+
+newMasriaGame(){
+
+    rm -rf $HOME/MasriaBashGame/Masria
+    mkdir -p $HOME/MasriaBashGame
+    cd $HOME/MasriaBashGame
+    tar -xzf $HOME/MasriaBashGame/Masria.tar.gz
+    echo "$HOME/MasriaBashGame/Masria" > $HOME/MasriaBashGame/saved_game    # guardo partida
+
+    Mochila=''
+    rm $HOME/MasriaBashGame/Masria/home/Mochila/*                           # vaciar mochila
+    touch $HOME/MasriaBashGame/Masria/home/Mochila/monedas                  # reiniciar a 100 monedas
+    echo "100" > $HOME/MasriaBashGame/Masria/home/Mochila/monedas
+
+    Mochila=$HOME/MasriaBashGame/Masria/home/Mochila/
+    export Mochila
+    export PS1='Claud@Masria:'
+
+   
+    read -p "Pulsa la tecla [INTRO] para empezar la aventura!" abc
+    LUGAR=$HOME/MasriaBashGame/Masria
+
+}
+
+continueMasriaGame(){
+
+    export PS1='Claud@Masria:'
+
+    ##clear
+    echo " RPG BASH GAME --- MASRIA WORLD "
+    read -p "Pulsa la tecla [INTRO] para continuar la aventura donde te quedaste!" abc
+    LUGAR=$(cat $HOME/MasriaBashGame/saved_game)
+}
+
+
+
+# INICIO DEL SCRIPT.
+
+gamedir=$HOME/MasriaBashGame
+
+clear
+cd $gamedir
+cat Masria/.scene
+echo " "
+
+if [[ -f $HOME/MasriaBashGame/saved_game ]]; then
+    while true; do
+        echo ""
+        echo "1 - Nueva Partida"
+        echo "2 - Continuar partida anterior"
+        read -p "Introduce la opción elegida (1 o 2): " abc
+
+        if [[ $abc -eq 1 ]]; then
+            echo "🆕 Iniciando nueva partida..."
+            newMasriaGame
+            break
+        elif [[ $abc -eq 2 ]]; then
+            echo "💾 Cargando partida guardada..."
+            continueMasriaGame
+            break
+        else
+            echo "❌ Opción no válida. Por favor, elige 1 o 2."
+        fi
+    done
+else
+    echo "🎮 No hay partida guardada. Iniciando nueva partida..."
+    newMasriaGame
+fi
+
+
+ case "$(uname -s)" in
+        Linux*)
+            # En Linux, buscar visores comunes
+            if [[ -f /usr/bin/eog ]]; then
+                eog "$HOME/MasriaBashGame/caratula.png" &
+            elif [[ -f /usr/bin/eom ]]; then
+                eom "$HOME/MasriaBashGame/caratula.png" &
+            elif [[ -f /usr/bin/feh ]]; then
+                feh "$HOME/MasriaBashGame/caratula.png" &
+            elif [[ -f /usr/bin/xdg-open ]]; then
+                xdg-open "$HOME/MasriaBashGame/caratula.png" > /dev/null 2>&1 &
+            else
+                echo "No se encontró un visor de imágenes. Instala eog, eom o feh."
+            fi
+            ;;
+        Darwin*)
+            # En macOS, usar open (nativo)
+            open "$HOME/MasriaBashGame/caratula.png" &
+            ;;
+        *)
+            echo "Sistema operativo no soportado para mostrar imágenes"
+            ;;
+    esac
+
+# MOSTRAR IMAGEN CARATULA 
+if [[ $(uname) == "Darwin" ]]
+then
+    #PATH MAC OS X
+    PATH=$PATH:$HOME/bin
+    open $HOME/MasriaBashGame/caratula.png &
+fi
+
+if [[ -f /usr/bin/xdg-open ]]
+then xdg-open $HOME/MasriaBashGame/caratula.png &
+
+else
+    if [[ -f /usr/bin/eog ]]
+    then eog $HOME/MasriaBashGame/caratula.png &
+    fi
+
+    if [[ -f /usr/bin/eom ]]
+    then eom $HOME/MasriaBashGame/caratula.png &
+    fi
+
+fi
+
+
+# moverse al directorio del juego e iniciar:
+cd $LUGAR && clear && cat .escenario
+exec bash --rcfile <(
+    cat ~/MasriaBashGame/bashrc_game; 
+    echo 'PS1="\[\033[01;32m\]Claud@World\[\033[00m\] : \[\033[01;34m\]\w\[\033[00m\] > "';
+    
+    )
