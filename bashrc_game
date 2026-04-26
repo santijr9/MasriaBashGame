@@ -1,6 +1,88 @@
 
 export BASH_SILENCE_DEPRECATION_WARNING=1
+readonly Mochila="-/MasriaBashGame/Masria/home/Mochila"
 
+# ============================================
+# MasriaBashGame - Música de fondo (Linux/macOS)
+# ============================================
+
+MASRIA_MUSIC_PID_FILE="/tmp/masria_music_pid"
+MASRIA_MUSIC_FILE="$HOME/MasriaBashGame/musica/masria.mp3"
+
+# Función para iniciar música según el sistema
+masria_start_music() {
+    # Verificar si ya hay música sonando
+    if [[ -f "$MASRIA_MUSIC_PID_FILE" ]]; then
+        local old_pid=$(cat "$MASRIA_MUSIC_PID_FILE")
+        if kill -0 "$old_pid" 2>/dev/null; then
+            return 0  # Ya está sonando
+        fi
+        rm -f "$MASRIA_MUSIC_PID_FILE"
+    fi
+    
+    # Verificar que el archivo existe
+    if [[ ! -f "$MASRIA_MUSIC_FILE" ]]; then
+        return 1
+    fi
+    
+    # Detectar sistema operativo y usar el reproductor adecuado
+    case "$(uname -s)" in
+        Darwin*)
+            # macOS: usar afplay con bucle while
+            (while true; do afplay "$MASRIA_MUSIC_FILE"; done) &
+            local pid=$!
+            ;;
+        Linux*)
+            # Linux: usar mpv o mplayer
+            if command -v mpv &> /dev/null; then
+                mpv --no-video --loop=inf --quiet "$MASRIA_MUSIC_FILE" &
+                local pid=$!
+            elif command -v mplayer &> /dev/null; then
+                mplayer -loop 0 -quiet "$MASRIA_MUSIC_FILE" &
+                local pid=$!
+            else
+                return 1
+            fi
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+    
+    echo "$pid" > "$MASRIA_MUSIC_PID_FILE"
+    export MASRIA_MUSIC_PID="$pid"
+    echo "🎵 Música iniciada (PID: $pid)"
+}
+
+# Función para detener música
+masria_stop_music() {
+    if [[ -f "$MASRIA_MUSIC_PID_FILE" ]]; then
+        local pid=$(cat "$MASRIA_MUSIC_PID_FILE")
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null
+            # En macOS, asegurar también killall por si quedan procesos
+            [[ "$(uname -s)" == "Darwin" ]] && killall afplay 2>/dev/null
+            echo "🎵 Música detenida"
+        fi
+        rm -f "$MASRIA_MUSIC_PID_FILE"
+        unset MASRIA_MUSIC_PID
+    fi
+}
+
+# Exit personalizado
+exit() {
+    masria_stop_music
+    builtin exit "$@"
+}
+
+# Iniciar música automáticamente
+if [[ -d "$HOME/MasriaBashGame" ]] && [[ -t 0 ]]; then
+    masria_start_music
+fi
+
+# Alias útiles
+alias masria-music-stop='masria_stop_music'
+alias masria-music-start='masria_start_music'
 
 move() {
     local destino="$1"
@@ -78,7 +160,7 @@ move() {
 
     if [[ $c == *Frontera* ]]
     then 
-
+      $HOME/MasriaBashGame/Masria/Frontera/.sephiroth.sh &
 
       case "$(uname -s)" in
         Linux*)
@@ -142,6 +224,15 @@ move() {
     
 }
 
+mv(){
+    if [[ -d $1 ]]
+    then
+        echo "❌ No puedes mover un lugar o ciudad del juego."
+        return 1
+    fi
+     /bin/mv $@
+}
+
 cat(){
 
     if [[ "$#" -eq 0 ]]
@@ -163,7 +254,12 @@ cat(){
 # Redefine ls para ocultar .escenarios
 ls() {
     # Si es "ls -a" o "ls --all"
-    echo "En el directorio $1 hay:"
+    if [[ "$*" == *"cosas_de"* ]]
+    then
+     echo "No puedes ver las cosas de Guybrush!"
+     return 1
+    fi
+
     if [[ "$*" == *"-a"* ]] || [[ "$*" == *"--all"* ]] || [[ "$*" == *"-la"* ]]; then
         # Ejecutar el ls real pero filtrar .escenario
         command ls --color "$@" | grep -v "^\.escenario*" | grep -v "^\.scene" | grep -v "Mochila"
@@ -173,6 +269,15 @@ ls() {
     fi
 }
 
+cp() {
+    # Si es "ls -a" o "ls --all"
+    if [[ "$*" == *"cosas_de"* ]]
+    then
+     echo "No puedes robarle el pergamino a Guybrush! Buen intento..."
+     return 1
+    else /bin/cp $@
+    fi
+}
 touch() { echo "No puedes crear tus propios objetos. Yo soy más hacker que tú."; }
 
 exit() {
@@ -187,6 +292,7 @@ exit() {
             # Aquí iría el código para autoguardar
             # Ejemplo: guardar_partida
             echo "¡Hasta pronto!"
+            masria_stop_music
             builtin exit 0
             ;;
         [Nn]*)
@@ -204,7 +310,14 @@ cd() { move "$@"; }
 
 # Comandos útiles
 help() {
-    echo "ayuda, pendiente"
+    echo "Algunos comandos que puedes utilizar:
+    - cat objeto
+    - move / cd (es el mismo)
+    - ls lugar
+    - mv objeto \$Mochila
+    - mochila o (ls \$Mochila)
+    - exit
+    "
 }
 
 mochila() {
