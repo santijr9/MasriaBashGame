@@ -20,6 +20,7 @@ fi
 # Pasos de la instalacion. carpeta y ejecutable
 mkdir -p $HOME/MasriaBashGame && \
 mkdir -p $HOME/MasriaBashGame/bin && \
+mkdir -p $HOME/MasriaBashGame/musica && \
 
 #cp move $HOME/bin/move
 #chmod +x $HOME/bin/move
@@ -36,7 +37,7 @@ chmod +x $HOME/MasriaBashGame/bin/masria && \
 
 #preparar bashrc_game
 cp bashrc_game $HOME/MasriaBashGame/bashrc_game && \
-
+cp musica/masria.mp3 $HOME/MasriaBashGame/musica/masria.mp3 && \
 
 # Descomprimir escenario Limpio nueva partida:
 cd $HOME/MasriaBashGame && \

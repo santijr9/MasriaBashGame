@@ -25,55 +25,34 @@ masria_start_music() {
         return 1
     fi
     
-    # Detectar sistema operativo y usar el reproductor adecuado
     case "$(uname -s)" in
-        Darwin*)
-            # macOS: usar afplay con bucle while
-            (while true; do afplay "$MASRIA_MUSIC_FILE"; done) &
-            local pid=$!
-            ;;
-        Linux*)
-            # Linux: usar mpv o mplayer
-            if command -v mpv &> /dev/null; then
-                mpv --no-video --loop=inf --quiet "$MASRIA_MUSIC_FILE" &
-                local pid=$!
-            elif command -v mplayer &> /dev/null; then
-                mplayer -loop 0 -quiet "$MASRIA_MUSIC_FILE" &
-                local pid=$!
-            else
-                return 1
-            fi
-            ;;
-        *)
-            return 1
-            ;;
-    esac
+            Darwin*)
+                (while true; do afplay "$MASRIA_MUSIC_FILE" 2>/dev/null; done) &>/dev/null &
+                ;;
+            Linux*)
+                (while true; do gst-launch-1.0 filesrc location="$MASRIA_MUSIC_FILE" ! decodebin ! audioconvert ! autoaudiosink 2>/dev/null; done) &>/dev/null &
+                ;;
+        esac
+        
+        local pid=$!
+        disown "$pid" 2>/dev/null  # <-- ESTO ELIMINA EL MENSAJE
+        echo "$pid" > "$MASRIA_MUSIC_PID_FILE" 2>/dev/null
+    echo " "
+    echo " 🎵 Música iniciada (PID: $pid)"
     
-    echo "$pid" > "$MASRIA_MUSIC_PID_FILE"
-    export MASRIA_MUSIC_PID="$pid"
-    echo "🎵 Música iniciada (PID: $pid)"
 }
 
 # Función para detener música
 masria_stop_music() {
-    if [[ -f "$MASRIA_MUSIC_PID_FILE" ]]; then
-        local pid=$(cat "$MASRIA_MUSIC_PID_FILE")
-        if kill -0 "$pid" 2>/dev/null; then
-            kill "$pid" 2>/dev/null
-            # En macOS, asegurar también killall por si quedan procesos
-            [[ "$(uname -s)" == "Darwin" ]] && killall afplay 2>/dev/null
-            echo "🎵 Música detenida"
-        fi
-        rm -f "$MASRIA_MUSIC_PID_FILE"
-        unset MASRIA_MUSIC_PID
-    fi
+    local pid=$(cat "$MASRIA_MUSIC_PID_FILE" 2>/dev/null)
+    [[ -n "$pid" ]] && kill "$pid" 2>/dev/null
+    rm -f "$MASRIA_MUSIC_PID_FILE" 2>/dev/null
+    [[ "$(uname -s)" == "Darwin" ]] && killall afplay 2>/dev/null
+    unset MASRIA_MUSIC_PID
+    echo " 🎵 Música detenida"
+    
 }
 
-# Exit personalizado
-exit() {
-    masria_stop_music
-    builtin exit "$@"
-}
 
 # Iniciar música automáticamente
 if [[ -d "$HOME/MasriaBashGame" ]] && [[ -t 0 ]]; then
@@ -182,7 +161,7 @@ move() {
             open "$HOME/MasriaBashGame/Masria/Frontera/sephiroth.jpg" &
             ;;
         *)
-            echo "Sistema operativo no soportado para mostrar imágenes"
+            echo " Sistema operativo no soportado para mostrar imágenes"
             ;;
     esac
         
@@ -209,7 +188,7 @@ move() {
          
         fi
     else
-        echo "❌ No existe '$destino'"
+        echo " ❌ No existe '$destino'"
         return 1
     fi
     
@@ -227,7 +206,7 @@ move() {
 mv(){
     if [[ -d $1 ]]
     then
-        echo "❌ No puedes mover un lugar o ciudad del juego."
+        echo " ❌ No puedes mover un lugar o ciudad del juego."
         return 1
     fi
      /bin/mv $@
@@ -236,7 +215,7 @@ mv(){
 cat(){
 
     if [[ "$#" -eq 0 ]]
-    then echo "[el comando ejecutado necesita mínimo un argumento]"
+    then echo " [el comando ejecutado necesita mínimo un argumento]"
     else 
         
         ## hay un argumento.   
@@ -288,19 +267,16 @@ exit() {
 
     case $salir in
         [Ss]*)
-            echo "Guardando partida antes de salir..."
-            # Aquí iría el código para autoguardar
-            # Ejemplo: guardar_partida
-            echo "¡Hasta pronto!"
+            echo -n "    ---> Guardando partida antes de salir... ¡Hasta pronto!"
             masria_stop_music
             builtin exit 0
             ;;
         [Nn]*)
-            echo "Continuando con el juego..."
+            echo " Continuando con el juego..."
             return 0
             ;;
         *)
-            echo "Respuesta no válida. Por favor, responde S o N."
+            echo " Respuesta no válida. Por favor, responde S o N."
             ;;
     esac
 }
